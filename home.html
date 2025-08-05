@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chat | Taptap</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+  <!-- Emoji Picker -->
+  <script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@4.6.2/dist/index.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background-color: #f0f0f0;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    header {
+      padding: 15px;
+      background: #008080;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h2 { margin: 0; }
+    .dark-mode {
+      background-color: #1c1c1c;
+      color: white;
+    }
+    #chatBox {
+      height: 70vh;
+      overflow-y: auto;
+      padding: 10px;
+      background: #fff;
+      border-bottom: 1px solid #ccc;
+    }
+    .msg {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 10px;
+      max-width: 70%;
+    }
+    .sent {
+      background: #d1ffd6;
+      align-self: flex-end;
+      text-align: right;
+    }
+    .received {
+      background: #f1f0f0;
+      align-self: flex-start;
+    }
+    #sendForm {
+      display: flex;
+      padding: 10px;
+      gap: 5px;
+    }
+    #message {
+      flex: 1;
+      padding: 8px;
+    }
+    .timestamp {
+      font-size: 0.8em;
+      color: gray;
+    }
+    .file-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+    nav {
+      display: flex;
+      justify-content: space-around;
+      padding: 10px;
+      background: #e0e0e0;
+    }
+    .emoji-btn {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h2>Taptap Chat</h2>
+    <div>
+      <button onclick="toggleTheme()">🌙/☀️</button>
+      <span id="onlineStatus">Offline</span>
+    </div>
+  </header>
+
+  <div id="chatBox"></div>
+
+  <form id="sendForm">
+    <input type="text" id="message" placeholder="Type a message..." required />
+    <input type="file" id="fileInput" />
+    <button type="button" class="emoji-btn" id="emoji-btn">😊</button>
+    <button type="submit">Send</button>
+  </form>
+
+  <nav>
+    <a href="#">Chatroom</a>
+    <a href="#">Settings</a>
+    <a href="#">Profile</a>
+  </nav>
+
+  <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyCq0Dj-tA2PMeXPh2azU-L7gHXgkWsK4Z8",
+      authDomain: "taptap-d54e1.firebaseapp.com",
+      databaseURL: "https://taptap-d54e1-default-rtdb.firebaseio.com",
+      projectId: "taptap-d54e1",
+      storageBucket: "taptap-d54e1.appspot.com",
+      messagingSenderId: "479359255611",
+      appId: "1:479359255611:web:da7a3940e244ce7a14cb1d"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    const auth = firebase.auth();
+    const db = firebase.database();
+    const storage = firebase.storage();
+
+    let currentUser;
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentUser = user;
+        db.ref('users/' + user.uid).update({ online: true, lastSeen: new Date().toLocaleString() });
+        listenMessages();
+      }
+    });
+
+    const chatBox = document.getElementById("chatBox");
+
+    function listenMessages() {
+      db.ref("messages").on("child_added", snap => {
+        const msg = snap.val();
+        const msgDiv = document.createElement("div");
+        msgDiv.className = "msg " + (msg.uid === currentUser.uid ? "sent" : "received");
+        if (msg.type === "text") {
+          msgDiv.innerHTML = `
+            ${msg.text}<br>
+            <span class="timestamp">${msg.time}</span>
+          `;
+        } else if (msg.type === "image") {
+          msgDiv.innerHTML = `<img src="${msg.url}" width="200"><br><span class="timestamp">${msg.time}</span>`;
+        } else if (msg.type === "video") {
+          msgDiv.innerHTML = `<video src="${msg.url}" controls width="250"></video><br><span class="timestamp">${msg.time}</span>`;
+        } else if (msg.type === "file") {
+          msgDiv.innerHTML = `<a href="${msg.url}" target="_blank">Download File</a><br><span class="timestamp">${msg.time}</span>`;
+        }
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+      });
+    }
+
+    // Send message
+    document.getElementById("sendForm").addEventListener("submit", e => {
+      e.preventDefault();
+      const msg = document.getElementById("message").value;
+      const time = new Date().toLocaleTimeString();
+      db.ref("messages").push({
+        text: msg,
+        uid: currentUser.uid,
+        time,
+        type: "text"
+      });
+      document.getElementById("message").value = "";
+    });
+
+    // Upload file/image/video
+    document.getElementById("fileInput").addEventListener("change", e => {
+      const file = e.target.files[0];
+      const type = file.type.includes("image") ? "image" : file.type.includes("video") ? "video" : "file";
+      const time = new Date().toLocaleTimeString();
+      const ref = storage.ref("uploads/" + Date.now() + file.name);
+      ref.put(file).then(snapshot => {
+        snapshot.ref.getDownloadURL().then(url => {
+          db.ref("messages").push({
+            url,
+            uid: currentUser.uid,
+            time,
+            type
+          });
+        });
+      });
+    });
+
+    // Theme toggle
+    function toggleTheme() {
+      document.body.classList.toggle("dark-mode");
+    }
+
+    // Emoji picker
+    const picker = new EmojiButton();
+    picker.on("emoji", emoji => {
+      document.getElementById("message").value += emoji;
+    });
+    document.getElementById("emoji-btn").addEventListener("click", () => {
+      picker.togglePicker(document.getElementById("emoji-btn"));
+    });
+
+    // Online status
+    const onlineStatus = document.getElementById("onlineStatus");
+    setInterval(() => {
+      if (currentUser) {
+        db.ref("users/" + currentUser.uid).once("value", snap => {
+          const user = snap.val();
+          onlineStatus.textContent = user?.online ? "Online" : `Last seen: ${user?.lastSeen}`;
+        });
+      }
+    }, 3000);
+
+    // Prevent redirect back to login
+    // (no action needed — we’re not forcing redirect now)
+  </script>
+</body>
+</html>
