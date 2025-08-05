@@ -1,38 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Home | Taptap</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
-  <!-- Firebase Config -->
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyB2mQNeygEwdWFCnHJnw9wlqHWKmXlfe38",
-      authDomain: "taptap-377d9.firebaseapp.com",
-      databaseURL: "https://taptap-377d9-default-rtdb.firebaseio.com",
-      projectId: "taptap-377d9",
-      storageBucket: "taptap-377d9.appspot.com",
-      messagingSenderId: "146364410143",
-      appId: "1:146364410143:web:3ce902bdcaeb954091682a"
-    };
-    firebase.initializeApp(firebaseConfig);
-  </script>
-
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
 
   <style>
     * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: 'Poppins', sans-serif;
-      background: #f4f7fa;
+      background: #eef3f8;
     }
+
     header {
       background: linear-gradient(to right, #00b4db, #0083b0);
       padding: 15px 20px;
@@ -41,81 +29,120 @@
       justify-content: space-between;
       align-items: center;
     }
+
     .main {
       display: flex;
-      padding: 20px;
+      flex-wrap: wrap;
       gap: 20px;
+      padding: 20px;
     }
+
     .section {
       background: white;
       padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
       flex: 1;
+      min-width: 250px;
+      transition: all 0.3s ease;
     }
+
     .section h3 {
       margin-top: 0;
     }
-    #friendsList div {
+
+    #friendsList .friend {
       padding: 10px;
       border-bottom: 1px solid #eee;
-    }
-    #friendsList div:last-child {
-      border-bottom: none;
-    }
-    #logoutBtn {
-      padding: 8px 15px;
-      background: #fff;
-      color: #0083b0;
-      font-weight: bold;
-      border-radius: 8px;
       cursor: pointer;
+      transition: 0.2s;
     }
-    #postInput {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 10px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
+
+    #friendsList .friend:hover {
+      background: #f0fbff;
     }
+
     .chat-box {
-      background: #e6f2f2;
+      background: #f2faff;
       padding: 10px;
       border-radius: 8px;
       margin-top: 10px;
+      animation: fadeIn 0.3s ease-in;
     }
+
+    #postInput {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+
+    .fab {
+      position: fixed;
+      bottom: 25px;
+      right: 25px;
+      background: #0083b0;
+      color: white;
+      border-radius: 50%;
+      width: 55px;
+      height: 55px;
+      font-size: 28px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+
+    .fab:hover {
+      background: #006a94;
+    }
+
+    #settingsPanel p {
+      margin: 10px 0;
+    }
+
     footer {
       text-align: center;
-      padding: 15px;
+      padding: 20px;
       font-size: 13px;
       color: #999;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 800px) {
+      .main {
+        flex-direction: column;
+      }
     }
   </style>
 </head>
 <body>
 
 <header>
-  <h2>Taptap Home</h2>
-  <button id="logoutBtn" onclick="logout()">Logout</button>
+  <h2>Taptap Dashboard</h2>
+  <button onclick="logout()" style="background: white; color: #0083b0; border-radius: 6px; padding: 6px 12px; border: none;">Logout</button>
 </header>
 
 <div class="main">
   <!-- 👫 Friends List -->
-  <div class="section" style="max-width: 250px;">
+  <div class="section" style="max-width: 300px;">
     <h3>Friends</h3>
-    <div id="friendsList">Loading friends...</div>
+    <div id="friendsList">Loading...</div>
   </div>
 
-  <!-- 📝 Chat/Post Area -->
+  <!-- 📝 Public Chat Area -->
   <div class="section" style="flex: 2;">
-    <h3>Chat Room</h3>
-    <input type="text" id="postInput" placeholder="Post a message..." />
-    <button onclick="postMessage()">Post</button>
+    <h3>Public Feed</h3>
+    <input type="text" id="postInput" placeholder="Post a message to the world..." />
     <div id="chatRoom"></div>
   </div>
 
-  <!-- ⚙️ Settings -->
-  <div class="section" style="max-width: 250px;">
+  <!-- ⚙️ Settings Panel -->
+  <div class="section" id="settingsPanel" style="max-width: 300px;">
     <h3>Settings</h3>
     <p><strong>Name:</strong> <span id="userName"></span></p>
     <p><strong>Email:</strong> <span id="userEmail"></span></p>
@@ -123,40 +150,60 @@
   </div>
 </div>
 
+<!-- Floating action button -->
+<button class="fab" onclick="postMessage()">+</button>
+
 <footer>
   &copy; 2025 Taptap | Built by John Munga
 </footer>
 
 <script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyB2mQNeygEwdWFCnHJnw9wlqHWKmXlfe38",
+    authDomain: "taptap-377d9.firebaseapp.com",
+    databaseURL: "https://taptap-377d9-default-rtdb.firebaseio.com",
+    projectId: "taptap-377d9",
+    storageBucket: "taptap-377d9.appspot.com",
+    messagingSenderId: "146364410143",
+    appId: "1:146364410143:web:3ce902bdcaeb954091682a"
+  };
+  firebase.initializeApp(firebaseConfig);
+
   let currentUser = null;
 
   firebase.auth().onAuthStateChanged(user => {
-    if (!user) return window.location.href = "index.html";
+    if (!user) return location.href = "index.html";
     currentUser = user;
 
-    // Load current user info
-    firebase.database().ref("users/" + user.uid).once('value').then(snapshot => {
+    const userRef = firebase.database().ref("users/" + user.uid);
+    userRef.once('value').then(snapshot => {
       const data = snapshot.val() || {};
       document.getElementById("userName").textContent = data.name || "N/A";
       document.getElementById("userEmail").textContent = data.email || "N/A";
       document.getElementById("userPhone").textContent = data.phone || "N/A";
     });
 
-    // Load all other users as "Friends"
+    // Load other users
     firebase.database().ref("users").once('value').then(snapshot => {
-      const allUsers = snapshot.val();
-      let html = '';
-      for (let uid in allUsers) {
-        if (uid !== user.uid) {
-          const friend = allUsers[uid];
-          html += `<div><strong>${friend.name}</strong><br><small>${friend.email}</small></div>`;
+      const list = document.getElementById("friendsList");
+      list.innerHTML = "";
+      snapshot.forEach(child => {
+        if (child.key !== user.uid) {
+          const friend = child.val();
+          const div = document.createElement("div");
+          div.className = "friend";
+          div.innerHTML = `<strong>${friend.name || 'User'}</strong><br><small>${friend.email}</small>`;
+          div.onclick = () => {
+            localStorage.setItem("chatFriendId", child.key);
+            location.href = "chatroom.html";
+          };
+          list.appendChild(div);
         }
-      }
-      document.getElementById("friendsList").innerHTML = html || "No other users yet.";
+      });
     });
 
-    // Load chat messages
-    firebase.database().ref("chat").on('child_added', snap => {
+    // Public chat messages
+    firebase.database().ref("chat").on("child_added", snap => {
       const msg = snap.val();
       const div = document.createElement("div");
       div.className = "chat-box";
@@ -166,13 +213,12 @@
   });
 
   function logout() {
-    firebase.auth().signOut().then(() => {
-      window.location.href = "index.html";
-    });
+    firebase.auth().signOut().then(() => location.href = "index.html");
   }
 
   function postMessage() {
-    const text = document.getElementById("postInput").value.trim();
+    const input = document.getElementById("postInput");
+    const text = input.value.trim();
     if (!text) return alert("Type something...");
     firebase.database().ref("users/" + currentUser.uid).once('value').then(snapshot => {
       const name = snapshot.val().name || "Anonymous";
@@ -181,16 +227,16 @@
         text: text,
         timestamp: new Date().toISOString()
       });
-      document.getElementById("postInput").value = "";
+      input.value = "";
     });
   }
 
-  // Optional voice greeting
+  // Voice greeting
   window.onload = () => {
-    const speak = new SpeechSynthesisUtterance("Welcome to Taptap home. You can now chat and explore.");
+    const speak = new SpeechSynthesisUtterance("Welcome to your Taptap home. Chat with friends or post something.");
     speechSynthesis.speak(speak);
   };
 </script>
 
 </body>
-  </html>
+</html>
