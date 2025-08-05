@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chatroom | Taptap</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f1f1f1;
+      margin: 0;
+      padding: 0;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .dark-mode {
+      background-color: #121212;
+      color: white;
+    }
+
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .chat-header {
+      padding: 15px;
+      background-color: #4CAF50;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chat-body {
+      flex: 1;
+      padding: 10px;
+      overflow-y: scroll;
+    }
+
+    .message {
+      margin: 10px 0;
+      max-width: 70%;
+      padding: 10px;
+      border-radius: 8px;
+      position: relative;
+    }
+
+    .sent {
+      background-color: #DCF8C6;
+      align-self: flex-end;
+    }
+
+    .received {
+      background-color: #FFFFFF;
+      align-self: flex-start;
+    }
+
+    .timestamp {
+      font-size: 10px;
+      color: gray;
+      text-align: right;
+    }
+
+    .chat-footer {
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #eee;
+    }
+
+    .chat-footer input, .chat-footer button {
+      padding: 10px;
+      font-size: 16px;
+    }
+
+    #toggleMode {
+      cursor: pointer;
+      background: none;
+      border: none;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      <div>
+        <strong id="chatUser">Chatroom</strong><br>
+        <small id="userStatus">Connecting...</small>
+      </div>
+      <button id="toggleMode">🌙</button>
+    </div>
+
+    <div class="chat-body" id="messages"></div>
+
+    <div class="chat-footer">
+      <input type="file" id="fileInput" hidden />
+      <input type="text" id="messageInput" placeholder="Type your message..." />
+      <button onclick="sendMessage()">📤</button>
+      <button onclick="document.getElementById('fileInput').click()">📎</button>
+    </div>
+  </div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+
+  <!-- Firebase Config -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDq1aUeoJZRpDqiFSNC8YdP4oM7byGQLtE",
+      authDomain: "taptap-867d9.firebaseapp.com",
+      databaseURL: "https://taptap-867d9-default-rtdb.firebaseio.com",
+      projectId: "taptap-867d9",
+      storageBucket: "taptap-867d9.appspot.com",
+      messagingSenderId: "1078811271747",
+      appId: "1:1078811271747:web:77d7d92c0e3a26ad70e6a6"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const storage = firebase.storage();
+  </script>
+
+  <script>
+    let user = localStorage.getItem("username") || "Guest";
+    document.getElementById("chatUser").innerText = user;
+    let messagesRef = db.ref("messages");
+
+    function sendMessage() {
+      const msgInput = document.getElementById("messageInput");
+      const msg = msgInput.value.trim();
+      if (msg !== "") {
+        const time = new Date().toLocaleTimeString();
+        messagesRef.push({
+          user,
+          text: msg,
+          timestamp: time
+        });
+        msgInput.value = "";
+      }
+    }
+
+    document.getElementById("fileInput").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const fileType = file.type;
+      const storageRef = storage.ref('uploads/' + Date.now() + "-" + file.name);
+      await storageRef.put(file);
+      const fileURL = await storageRef.getDownloadURL();
+
+      const time = new Date().toLocaleTimeString();
+
+      let message = {
+        user,
+        fileType,
+        fileURL,
+        timestamp: time
+      };
+
+      messagesRef.push(message);
+    });
+
+    messagesRef.on("child_added", (snapshot) => {
+      const msg = snapshot.val();
+      const messagesDiv = document.getElementById("messages");
+      const div = document.createElement("div");
+      div.className = "message " + (msg.user === user ? "sent" : "received");
+
+      if (msg.text) {
+        div.innerHTML = `<strong>${msg.user}:</strong> ${msg.text}<div class="timestamp">${msg.timestamp}</div>`;
+      } else if (msg.fileType.startsWith("image")) {
+        div.innerHTML = `<strong>${msg.user}:</strong><br><img src="${msg.fileURL}" width="200"/><div class="timestamp">${msg.timestamp}</div>`;
+      } else if (msg.fileType.startsWith("video")) {
+        div.innerHTML = `<strong>${msg.user}:</strong><br><video controls width="200"><source src="${msg.fileURL}"></video><div class="timestamp">${msg.timestamp}</div>`;
+      } else {
+        div.innerHTML = `<strong>${msg.user}:</strong><br><a href="${msg.fileURL}" target="_blank">Download File</a><div class="timestamp">${msg.timestamp}</div>`;
+      }
+
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
+
+    // Online Status
+    const statusRef = db.ref("status/" + user);
+    statusRef.set("Online");
+    statusRef.onDisconnect().set("Last seen: " + new Date().toLocaleString());
+
+    db.ref("status").on("value", (snapshot) => {
+      const statuses = snapshot.val();
+      document.getElementById("userStatus").innerText = statuses[user] || "Offline";
+    });
+
+    // Dark Mode Toggle
+    const toggleBtn = document.getElementById("toggleMode");
+    toggleBtn.addEventListener("click", () => {
+      document.body.classList.toggle("dark-mode");
+      toggleBtn.innerText = document.body.classList.contains("dark-mode") ? "☀️" : "🌙";
+    });
+  </script>
+</body>
+</html>
