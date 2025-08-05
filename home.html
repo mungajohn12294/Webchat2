@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Home | TapTap</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto&display=swap">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Roboto', sans-serif; }
+    body { background-color: #18191A; color: white; padding-top: 60px; }
+    
+    .toolbar {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      background-color: black;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      z-index: 10;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    }
+    .toolbar h1 {
+      font-size: 22px;
+      color: #00FFAB;
+    }
+    .toolbar a {
+      color: white;
+      margin-left: 15px;
+      text-decoration: none;
+      font-size: 16px;
+    }
+
+    .post-form {
+      background-color: #242526;
+      padding: 15px;
+      margin: 20px;
+      border-radius: 10px;
+    }
+
+    .post-form textarea {
+      width: 100%;
+      background: #3A3B3C;
+      border: none;
+      color: white;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      resize: none;
+    }
+
+    .post-form button {
+      background: #00FFAB;
+      color: black;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+
+    .post-list {
+      margin: 0 20px;
+    }
+
+    .post {
+      background-color: #242526;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+
+    .post h3 {
+      margin-bottom: 5px;
+      color: #00FFAB;
+    }
+
+    .timestamp {
+      font-size: 12px;
+      color: #ccc;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <h1>TapTap</h1>
+    <div>
+      <a href="home.html">Home</a>
+      <a href="chatroom.html">Chat</a>
+      <a href="settings.html">Settings</a>
+    </div>
+  </div>
+
+  <div class="post-form">
+    <textarea id="postContent" rows="3" placeholder="What's on your mind?"></textarea>
+    <button onclick="addPost()">Post</button>
+  </div>
+
+  <div class="post-list" id="postList"></div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+  <script>
+    // Replace with your own Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyCXTdzF1pEvhAfAgmTC9oL0LXGdYYOZzEQ",
+      authDomain: "taptap-chat.firebaseapp.com",
+      databaseURL: "https://taptap-chat-default-rtdb.firebaseio.com",
+      projectId: "taptap-chat",
+      storageBucket: "taptap-chat.appspot.com",
+      messagingSenderId: "163982537059",
+      appId: "1:163982537059:web:438930a5f4a14bfb4a57f2"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function addPost() {
+      const content = document.getElementById('postContent').value.trim();
+      if (!content) return;
+
+      const post = {
+        content,
+        username: "Anonymous",
+        timestamp: new Date().toLocaleString()
+      };
+
+      db.ref("posts").push(post);
+      document.getElementById('postContent').value = "";
+    }
+
+    function loadPosts() {
+      const postList = document.getElementById('postList');
+      db.ref("posts").on("value", snapshot => {
+        postList.innerHTML = "";
+        const posts = snapshot.val();
+        if (posts) {
+          const keys = Object.keys(posts).reverse(); // Newest first
+          keys.forEach(key => {
+            const post = posts[key];
+            const postEl = document.createElement("div");
+            postEl.className = "post";
+            postEl.innerHTML = `
+              <h3>${post.username}</h3>
+              <div class="timestamp">${post.timestamp}</div>
+              <p>${post.content}</p>
+            `;
+            postList.appendChild(postEl);
+          });
+        }
+      });
+    }
+
+    loadPosts();
+  </script>
+</body>
+</html>
